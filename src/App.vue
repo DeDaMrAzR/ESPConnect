@@ -98,250 +98,34 @@
 
           <v-window v-model="activeTab">
             <v-window-item value="info">
-              <v-expand-transition>
-                <v-card v-if="chipDetails" class="mb-4" variant="tonal">
-                  <v-card-text>
-                    <v-row dense>
-                      <v-col cols="12" md="6">
-                        <div class="text-subtitle-2 text-medium-emphasis">Chip</div>
-                        <div class="text-body-1 font-weight-medium">
-                          {{ chipDetails.description || chipDetails.name }}
-                        </div>
-                        <div class="text-caption text-medium-emphasis mt-1">
-                          {{ chipDetails.name }}
-                        </div>
-                      </v-col>
-                      <v-col cols="12" md="6">
-                        <div class="text-subtitle-2 text-medium-emphasis">Flash</div>
-                        <div class="text-body-1 font-weight-medium">
-                          {{ chipDetails.flashSize || 'Unknown' }}
-                        </div>
-                        <div class="text-caption text-medium-emphasis mt-1">
-                          Crystal: {{ chipDetails.crystal || 'Unknown' }}
-                        </div>
-                        <div class="text-caption text-medium-emphasis">
-                          MAC: {{ chipDetails.mac || 'Unknown' }}
-                        </div>
-                      </v-col>
-                      <v-col cols="12">
-                        <div class="text-subtitle-2 text-medium-emphasis mb-2">Features</div>
-                        <v-chip-group column>
-                          <v-chip
-                            v-for="feature in chipDetails.features"
-                            :key="feature"
-                            class="me-2 mb-2"
-                            size="small"
-                            variant="elevated"
-                            color="primary"
-                          >
-                            {{ feature }}
-                          </v-chip>
-                          <v-chip v-if="!chipDetails.features?.length" size="small" variant="outlined">
-                            Not reported
-                          </v-chip>
-                        </v-chip-group>
-                      </v-col>
-                      <v-col v-if="chipDetails.facts?.length" cols="12">
-                        <div class="text-subtitle-2 text-medium-emphasis mb-3">Extra Details</div>
-                        <v-table density="compact" class="extra-details-table">
-                          <tbody>
-                            <tr v-for="fact in chipDetails.facts" :key="fact.label">
-                              <td class="extra-details-label">
-                                <div class="d-flex align-center gap-2">
-                                  <v-icon v-if="fact.icon" size="16">{{ fact.icon }}</v-icon>
-                                  <span>{{ fact.label }}</span>
-                                </div>
-                              </td>
-                              <td class="extra-details-value">{{ fact.value }}</td>
-                            </tr>
-                          </tbody>
-                        </v-table>
-                      </v-col>
-                    </v-row>
-                  </v-card-text>
-                </v-card>
-              </v-expand-transition>
-
-              <v-card class="mt-6" variant="tonal">
-                <v-card-title class="text-subtitle-1 font-weight-medium d-flex align-center">
-                  <v-icon class="me-2" size="20">mdi-monitor</v-icon>
-                  Session Log
-                  <v-spacer />
-                  <v-btn
-                    variant="text"
-                    color="primary"
-                    size="small"
-                    prepend-icon="mdi-trash-can-outline"
-                    :disabled="!logText"
-                    @click="clearLog"
-                  >
-                    Clear
-                  </v-btn>
-                </v-card-title>
-                <v-card-text class="log-surface">
-                  <pre class="log-output">{{ logText || 'Logs will appear here once actions begin.' }}</pre>
-                </v-card-text>
-              </v-card>
+              <DeviceInfoTab
+                :chip-details="chipDetails"
+                :log-text="logText"
+                @clear-log="clearLog"
+              />
             </v-window-item>
 
             <v-window-item value="flash">
-              <v-row class="mb-2" dense>
-                <v-col cols="12" md="8">
-                  <v-file-input
-                    label="Firmware binary (.bin)"
-                    prepend-icon="mdi-file-upload"
-                    accept=".bin"
-                    density="comfortable"
-                    :disabled="busy"
-                    @update:model-value="handleFirmwareInput"
-                  />
-                </v-col>
-                <v-col cols="12" md="4">
-                  <v-text-field
-                    v-model="flashOffset"
-                    label="Flash offset"
-                    placeholder="0x0"
-                    density="comfortable"
-                    :disabled="busy"
-                  />
-                </v-col>
-                <v-col cols="12" md="4">
-                  <v-select
-                    v-model="selectedPreset"
-                    :items="offsetPresets"
-                    label="Recommended offsets"
-                    item-title="label"
-                    item-value="value"
-                    clearable
-                    density="comfortable"
-                    :disabled="busy"
-                    @update:model-value="applyOffsetPreset"
-                  />
-                </v-col>
-              </v-row>
-
-              <v-checkbox
-                v-model="eraseFlash"
-                label="Erase entire flash before writing"
-                density="comfortable"
-                hide-details
-                class="mb-4"
-                :disabled="busy"
+              <FlashFirmwareTab
+                v-model:flash-offset="flashOffset"
+                v-model:selected-preset="selectedPreset"
+                v-model:erase-flash="eraseFlash"
+                :offset-presets="offsetPresets"
+                :busy="busy"
+                :can-flash="canFlash"
+                :flash-in-progress="flashInProgress"
+                :flash-progress="flashProgress"
+                @firmware-input="handleFirmwareInput"
+                @flash="flashFirmware"
+                @apply-preset="applyOffsetPreset"
               />
-
-              <v-btn
-                color="primary"
-                size="large"
-                block
-                :disabled="!canFlash || busy"
-                @click="flashFirmware"
-              >
-                <v-icon start>mdi-lightning-bolt</v-icon>
-                Flash Firmware
-              </v-btn>
-
-              <v-progress-linear
-                v-if="flashInProgress"
-                class="mt-4"
-                :model-value="flashProgress"
-                color="primary"
-                height="12"
-                rounded
-                striped
-              >
-                <strong>{{ flashProgress }}%</strong>
-              </v-progress-linear>
             </v-window-item>
 
             <v-window-item value="partitions">
-              <div v-if="!partitionSegments.length" class="text-body-2 text-medium-emphasis">
-                Connect to an ESP32 to load its partition table.
-              </div>
-              <div v-else class="partition-view">
-                <div class="partition-map">
-                  <VTooltip
-                    v-for="segment in partitionSegments"
-                    :key="segment.key"
-                    location="top"
-                    :open-delay="120"
-                    transition="fade-transition"
-                  >
-                    <template #activator="{ props }">
-                      <div
-                        v-bind="props"
-                        :class="[
-                          'partition-segment',
-                          {
-                            'partition-segment--unused': segment.isUnused,
-                            'partition-segment--reserved': segment.isReserved
-                          }
-                        ]"
-                        :style="{
-                          width: segment.width,
-                          flexBasis: segment.width,
-                          backgroundColor: segment.color,
-                          backgroundImage: segment.backgroundImage || undefined
-                        }"
-                      >
-                        <span v-if="segment.showLabel" class="partition-label">
-                          {{ segment.label || 'Unnamed' }}
-                        </span>
-                        <span v-if="segment.showMeta" class="partition-meta">
-                          {{ segment.sizeText }} - {{ segment.offsetHex }}
-                        </span>
-                      </div>
-                    </template>
-                    <template #default>
-                      <div class="partition-tooltip">
-                        <div class="partition-tooltip__title">{{ segment.label || 'Unnamed' }}</div>
-                        <div
-                          v-for="line in segment.tooltipLines"
-                          :key="line"
-                          class="partition-tooltip__line"
-                        >
-                          {{ line }}
-                        </div>
-                      </div>
-                    </template>
-                  </VTooltip>
-                </div>
-
-                <v-table density="comfortable" class="mt-4">
-                  <thead>
-                    <tr>
-                      <th>Label</th>
-                      <th>Type</th>
-                      <th>Subtype</th>
-                      <th>Offset</th>
-                      <th>Size</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr
-                      v-for="entry in formattedPartitions"
-                      :key="entry.offset"
-                      class="partition-table-row"
-                    >
-                      <td>
-                        <div class="partition-table-label">
-                          <span
-                            class="partition-color-pip"
-                            :style="{
-                              backgroundColor: entry.color,
-                              backgroundImage: entry.backgroundImage || undefined
-                            }"
-                          ></span>
-                          <span>{{ entry.label || '—' }}</span>
-                        </div>
-                      </td>
-                      <td>{{ entry.typeHex }}</td>
-                      <td>{{ entry.subtypeHex }}</td>
-                      <td>{{ entry.offsetHex }}</td>
-                      <td>{{ entry.sizeText }}</td>
-                    </tr>
-                  </tbody>
-                </v-table>
-              </div>
+              <PartitionsTab
+                :partition-segments="partitionSegments"
+                :formatted-partitions="formattedPartitions"
+              />
             </v-window-item>
           </v-window>
         </v-card>
@@ -354,7 +138,7 @@
             </v-card-title>
             <v-card-text>
               <p class="text-body-2">
-                We couldn’t communicate with the board. Try putting your ESP32 into bootloader mode:
+                We couldnΓÇÖt communicate with the board. Try putting your ESP32 into bootloader mode:
               </p>
               <ol class="text-body-2 ps-4">
                 <li>Hold the <strong>BOOT</strong> (GPIO0) button.</li>
@@ -384,6 +168,9 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ESPLoader, Transport } from 'esptool-js';
 import { useTheme } from 'vuetify';
 import disconnectedLogo from './assets/disconnected-logo.svg';
+import DeviceInfoTab from './components/DeviceInfoTab.vue';
+import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
+import PartitionsTab from './components/PartitionsTab.vue';
 
 const SUPPORTED_VENDORS = [
   { usbVendorId: 0x303a },
@@ -536,8 +323,8 @@ const USB_PRODUCT_NAMES = {
 };
 
 const PACKAGE_FORM_FACTORS = {
-  QFN56: '56-pin QFN (7 mm × 7 mm)',
-  QFN32: '32-pin QFN (5 mm × 5 mm)',
+  QFN56: '56-pin QFN (7 mm ├ù 7 mm)',
+  QFN32: '32-pin QFN (5 mm ├ù 5 mm)',
   QFN28: '28-pin QFN',
   QFN24: '24-pin QFN',
   LGA56: '56-pad LGA module footprint',
@@ -604,7 +391,7 @@ function formatUsbBridge(info) {
       : null;
   const productName = productKey ? USB_PRODUCT_NAMES[productKey] : null;
   if (productName && productHex) {
-    return `${vendorName} — ${productName} (${productHex})`;
+    return `${vendorName} ΓÇö ${productName} (${productHex})`;
   }
   if (productHex) {
     return `${vendorName} (${productHex})`;
@@ -1235,7 +1022,7 @@ async function connect() {
       );
       if (deviceName || formattedCapacity) {
         const detail = formattedCapacity
-          ? `${formattedCapacity}${deviceName ? ` — ${deviceName}` : ''}`
+          ? `${formattedCapacity}${deviceName ? ` ΓÇö ${deviceName}` : ''}`
           : deviceName;
         pushFact('Flash Device', detail || deviceHex);
       } else {
@@ -1263,7 +1050,7 @@ async function connect() {
       });
       const extraCount = partitions.length - partitionPreview.length;
       const partitionSummary =
-        partitionPreview.join(', ') + (extraCount > 0 ? `, … (+${extraCount} more)` : '');
+        partitionPreview.join(', ') + (extraCount > 0 ? `, ΓÇª (+${extraCount} more)` : '');
       pushFact('Partition Table', partitionSummary);
     }
 
@@ -1412,64 +1199,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.log-surface {
-  background: rgba(15, 23, 42, 0.72);
-  border-radius: 12px;
-  padding: 12px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.log-output {
-  margin: 0;
-  font-family: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-  font-size: 0.9rem;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  color: rgba(226, 232, 240, 0.9);
-}
-
-.extra-details-table {
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--v-theme-surface) 80%, transparent);
-  border: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 12%, transparent);
-  overflow: hidden;
-}
-
-.extra-details-table :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.extra-details-table :deep(td) {
-  padding: 10px 12px;
-  border-bottom: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 10%, transparent);
-}
-
-.extra-details-table :deep(tbody tr:last-child td) {
-  border-bottom: none;
-}
-
-.extra-details-label {
-  color: color-mix(in srgb, var(--v-theme-on-surface) 70%, transparent);
-  font-size: 0.85rem;
-  letter-spacing: 0.01em;
-}
-
-.extra-details-value {
-  font-weight: 600;
-  font-size: 0.9rem;
-  text-align: right;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 95%, transparent);
-  word-break: break-word;
-}
-
-@media (min-width: 960px) {
-  .extra-details-value {
-    text-align: left;
-  }
-}
-
 .status-bar {
   border-radius: 12px;
   padding-inline: 12px;
@@ -1519,111 +1248,6 @@ onBeforeUnmount(() => {
   height: 36px;
 }
 
-.partition-view {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.partition-map {
-  display: flex;
-  width: 100%;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--v-theme-on-surface) 12%, transparent);
-  background: color-mix(in srgb, var(--v-theme-surface) 90%, transparent);
-  flex-wrap: nowrap;
-  min-height: 140px;
-}
-
-.partition-segment {
-  position: relative;
-  padding: 10px 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  gap: 6px;
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-  min-width: 0;
-  box-sizing: border-box;
-  border-left: 1px solid rgba(255, 255, 255, 0.4);
-  flex: 0 0 auto;
-}
-
-.partition-segment:first-child {
-  border-left: none;
-}
-
-.partition-segment--unused {
-  color: rgba(255, 255, 255, 0.88);
-  background-repeat: repeat;
-  background-size: 28px 28px;
-}
-
-.partition-segment--unused .partition-meta {
-  opacity: 0.8;
-}
-
-.partition-segment--reserved {
-  color: rgba(255, 255, 255, 0.92);
-}
-
-.partition-segment--reserved .partition-meta {
-  opacity: 0.85;
-}
-
-.partition-tooltip {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 180px;
-}
-
-.partition-tooltip__title {
-  font-weight: 600;
-  font-size: 0.85rem;
-}
-
-.partition-tooltip__line {
-  font-size: 0.78rem;
-  opacity: 0.85;
-}
-
-.partition-table-row td {
-  vertical-align: middle;
-}
-
-.partition-table-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.partition-color-pip {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  background-size: 18px 18px;
-  background-repeat: repeat;
-}
-
-.partition-label {
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.partition-meta {
-  font-size: 0.75rem;
-  opacity: 0.85;
-}
-
-.partition-map:empty::before {
-  content: 'No partitions detected.';
-  padding: 16px;
-  color: color-mix(in srgb, var(--v-theme-on-surface) 60%, transparent);
-}
 </style>
+
+
