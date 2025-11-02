@@ -26,7 +26,7 @@
               <div class="device-summary">
                 <div class="summary-block">
                   <div class="summary-label">
-                    <v-icon size="20" class="me-2">mdi-memory</v-icon>
+                    <v-icon size="40" class="me-2">mdi-memory</v-icon>
                     Flash & Clock
                   </div>
                   <div class="summary-value">{{ details.flashSize || 'Unknown' }}</div>
@@ -43,15 +43,13 @@
                 <div class="summary-divider" role="presentation" />
                 <div class="summary-block">
                   <div class="summary-label">
-                    <v-icon size="20" class="me-2">mdi-lightning-bolt-outline</v-icon>
+                    <v-icon size="40" class="me-2">mdi-lightning-bolt-outline</v-icon>
                     Feature Set
                   </div>
                   <div class="summary-value">
                     {{ hasFeatures ? `${details.features.length} capabilities` : 'No features reported' }}
                   </div>
-                  <div v-if="details.mac" class="summary-meta">
-                    MAC {{ details.mac }}
-                  </div>
+
                   <div class="summary-chips">
                     <template v-if="hasFeatures">
                       <v-chip v-for="feature in featurePreview" :key="feature" class="summary-chip" size="small"
@@ -367,7 +365,7 @@ const featurePreview = computed(() => {
   align-items: center;
   gap: 6px;
   text-transform: uppercase;
-  font-size: 0.72rem;
+  font-size: 1.5rem;
   letter-spacing: 0.14em;
   font-weight: 600;
   opacity: 0.78;
