@@ -42,8 +42,8 @@
           :disabled="busy || flashInProgress || maintenanceBusy || baudChangeBusy || monitorActive" />
       </div>
       <v-spacer />
-      <v-btn :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`" variant="text" icon color="surface"
-        size="small" class="status-theme-toggle" @click="toggleTheme">
+      <v-btn :title="`Switch to ${isDarkTheme ? 'light' : 'dark'} theme`" variant="text" icon size="small"
+        @click="toggleTheme">
         <v-icon>{{ themeIcon }}</v-icon>
       </v-btn>
       <v-chip :color="connected ? 'success' : 'grey-darken-1'" class="text-capitalize" variant="elevated"
