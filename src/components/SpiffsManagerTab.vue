@@ -68,7 +68,7 @@
           <v-btn
             color="error"
             variant="text"
-            :disabled="readOnly || !hasClient || loading || busy || saving"
+            :disabled="readOnly || !hasClient || loading || busy || saving || !backupDone"
             @click="emit('format')"
           >
             <v-icon start>mdi-delete-sweep</v-icon>
