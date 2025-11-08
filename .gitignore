@@ -12,6 +12,5 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
-public/wasm/littlefs/index.js
-public/wasm/littlefs/index.d.ts
-public/wasm/littlefs/littlefs.wasm
+public/wasm/
+
