@@ -121,24 +121,8 @@
             Free {{ formatSize(usage.freeBytes) }}
           </div>
         </div>
-        <div
-          class="spiffs-dropzone"
-          :class="{ 'spiffs-dropzone--active': dragActive }"
-          @dragover.prevent="handleDragOver"
-          @dragleave.prevent="handleDragLeave"
-          @drop.prevent="handleDrop"
-        >
-          <div class="spiffs-dropzone__hint">
-            <v-icon size="32">mdi-cloud-upload-outline</v-icon>
-            <div class="spiffs-dropzone__hint-text">
-              <strong>Drop files to upload</strong>
-              <span>or use the picker below</span>
-            </div>
-          </div>
-          <div v-if="dragActive" class="spiffs-dropzone__overlay">
-            Release to upload
-          </div>
-          <div class="upload-row">
+        <div class="upload-row upload-row--split">
+          <div class="upload-picker">
             <v-file-input
               v-model="uploadFile"
               density="comfortable"
@@ -157,6 +141,24 @@
               <v-icon start>mdi-upload</v-icon>
               Upload
             </v-btn>
+          </div>
+          <div
+            class="spiffs-dropzone"
+            :class="{ 'spiffs-dropzone--active': dragActive }"
+            @dragover.prevent="handleDragOver"
+            @dragleave.prevent="handleDragLeave"
+            @drop.prevent="handleDrop"
+          >
+            <div class="spiffs-dropzone__hint">
+              <v-icon size="32">mdi-cloud-upload-outline</v-icon>
+              <div class="spiffs-dropzone__hint-text">
+                <strong>Drop file to upload</strong>
+                <span>Auto uploads on drop</span>
+              </div>
+            </div>
+            <div v-if="dragActive" class="spiffs-dropzone__overlay">
+              Release to upload
+            </div>
           </div>
         </div>
         <v-alert
@@ -341,6 +343,7 @@ const usagePercent = computed(() => {
   return Math.min(100, Math.round(ratio * 100));
 });
 const dragActive = ref(false);
+const autoUploadPending = ref(false);
 const canUpload = computed(
   () =>
     !props.readOnly &&
@@ -355,19 +358,32 @@ watch(uploadFile, file => {
 });
 
 watch(
-  () => [uploadFile.value, props.uploadBlocked],
-  ([file, blocked]) => {
-    if (file && !blocked) {
+  () => [uploadFile.value, props.uploadBlocked, autoUploadPending.value],
+  ([file, blocked, auto]) => {
+    if (file && !blocked && auto) {
       submitUpload(true);
     }
   },
   { flush: 'post' },
 );
 
+watch(
+  () => props.uploadBlocked,
+  blocked => {
+    if (blocked) {
+      autoUploadPending.value = false;
+    }
+  },
+);
+
 function submitUpload(auto = false) {
   if (!uploadFile.value || props.uploadBlocked) return;
+  if (auto) {
+    autoUploadPending.value = false;
+  }
   emit('upload-file', { file: uploadFile.value });
   uploadFile.value = null;
+  autoUploadPending.value = false;
 }
 
 function triggerRestore() {
@@ -404,6 +420,7 @@ function handleDrop(event) {
   if (!canUpload.value) return;
   const file = event.dataTransfer?.files?.[0];
   if (!file) return;
+  autoUploadPending.value = true;
   uploadFile.value = file;
 }
 
@@ -442,10 +459,23 @@ function isViewable(name) {
   gap: 12px;
 }
 
+.upload-row--split {
+  align-items: stretch;
+}
+
+.upload-picker {
+  display: grid;
+  gap: 12px;
+}
+
 @media (min-width: 960px) {
   .upload-row {
     grid-template-columns: 1fr auto;
     align-items: end;
+  }
+
+  .upload-row--split {
+    grid-template-columns: 1fr 1fr;
   }
   .upload-row__cta {
     align-self: center;
@@ -476,8 +506,10 @@ function isViewable(name) {
   border: 2px dashed transparent;
   border-radius: 12px;
   transition: border-color 0.2s ease, background-color 0.2s ease;
-  padding: 12px;
-  margin-bottom: 12px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .spiffs-dropzone--active {
@@ -503,7 +535,6 @@ function isViewable(name) {
   align-items: center;
   gap: 12px;
   color: color-mix(in srgb, var(--v-theme-on-surface) 80%, transparent);
-  margin-bottom: 8px;
 }
 
 .spiffs-dropzone__hint-text {
