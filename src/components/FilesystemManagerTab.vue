@@ -13,7 +13,7 @@
         <span class="font-weight-black">{{ partitionHeading }}</span>
       </template>
       <v-card-text class="d-flex flex-column gap-4">
-        <v-select :items="partitions" item-title="label" item-value="id" density="comfortable" label="Partition"
+        <v-select :items="partitions" item-title="label" item-value="id" density="comfortable" label="Partition name"
           :model-value="selectedPartitionId" :disabled="loading || busy || saving || !partitions.length"
           @update:model-value="value => emit('select-partition', value)" />
         <div class="filesystem-manager__controls">
