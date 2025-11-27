@@ -3016,15 +3016,15 @@ async function detectFilesystemType(loader, offset, size) {
     const textDecoder = new TextDecoder('ascii');
     const dataStr = textDecoder.decode(data);
     if (dataStr.includes('littlefs')) {
-      console.log('LittleFS detected: found "littlefs" string in partition data');
+      appendLog('LittleFS detected: found "littlefs" string in partition data');
       return 'littlefs';
     }
     
     // If no "littlefs" string found, assume SPIFFS
-    console.log('SPIFFS assumed: no "littlefs" string found in partition data');
+    appendLog('SPIFFS assumed: no "littlefs" string found in partition data');
     return 'spiffs';
   } catch (err) {
-    console.warn('Failed to detect filesystem type', err);
+    appendLog('Failed to detect filesystem type', err);
     // On error, default to SPIFFS
     return 'spiffs';
   }
@@ -3056,13 +3056,13 @@ async function readPartitionTable(loader, offset = 0x8000, length = 0x400) {
     for (const entry of entries) {
       if (entry.type === 0x01 && entry.subtype === 0x82) {
         entry.detectedFilesystem = await detectFilesystemType(loader, entry.offset, entry.size);
-        console.log(`Partition "${entry.label}" at 0x${entry.offset.toString(16)}: detected as ${entry.detectedFilesystem}`);
+        appendLog(`Partition "${entry.label}" at 0x${entry.offset.toString(16)}: detected as ${entry.detectedFilesystem}`);
       }
     }
     
     return entries;
   } catch (err) {
-    console.warn('Failed to read partition table', err);
+    appendLog('Failed to read partition table', err);
     return [];
   }
 }
@@ -3809,7 +3809,7 @@ function decodeCString(bytes) {
   try {
     return asciiDecoder.decode(bytes.subarray(0, end)).trim();
   } catch (error) {
-    console.warn('Failed to decode string', error);
+    appendLog('Failed to decode string', error);
     return '';
   }
 }
@@ -3920,7 +3920,7 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
         activeSummary = detected.summary;
       }
     } catch (error) {
-      console.warn('Failed to read OTA data partition', error);
+      appendLog('Failed to read OTA data partition', error);
       appMetadataError.value = 'Unable to read OTA metadata.';
     }
   }
@@ -3951,7 +3951,7 @@ async function analyzeAppPartitions(loaderInstance, partitions) {
         buffer = await loaderInstance.readFlash(entry.offset, readSize);
       } catch (error) {
         imageError = error?.message || String(error);
-        console.warn(`Failed to read app partition ${entry.label || slotLabel}`, error);
+        appendLog(`Failed to read app partition ${entry.label || slotLabel}`, error);
       }
     } else {
       imageError = 'Partition too small to contain app image header.';
@@ -4092,7 +4092,7 @@ async function loadAppMetadata(options = {}) {
   try {
     await analyzeAppPartitions(loader.value, partitions);
   } catch (error) {
-    console.warn('Failed to analyze app partitions', error);
+    appendLog('Failed to analyze app partitions', error);
     appMetadataError.value = error?.message || String(error);
     appMetadataLoaded.value = false;
   } finally {
@@ -4717,7 +4717,7 @@ function getPortIdentity(port) {
   try {
     return port.getInfo();
   } catch (error) {
-    console.warn('Unable to read serial port info', error);
+    appendLog('Unable to read serial port info', error);
     return null;
   }
 }
@@ -4912,7 +4912,7 @@ async function stopMonitor(options = {}) {
     try {
       monitorDecoder.decode(new Uint8Array(), { stream: false });
     } catch (err) {
-      console.warn('Monitor decoder flush failed', err);
+      appendLog('Monitor decoder flush failed', err);
     }
     monitorDecoder = null;
   }
@@ -4972,7 +4972,7 @@ async function disconnectTransport() {
       await currentPort.value.close();
     }
   } catch (error) {
-    console.warn('Error disconnecting transport', error);
+    appendLog('Error disconnecting transport', error);
   } finally {
     transport.value = null;
     currentPort.value = null;
