@@ -653,6 +653,7 @@ import { PACKAGE_LABELS, ECO_LABELS, EMBEDDED_FLASH_CAPACITY, EMBEDDED_PSRAM_CAP
 import { JEDEC_FLASH_PARTS, JEDEC_MANUFACTURERS, VENDOR_ALIASES } from './constants/flashIds';
 import { USB_PRODUCT_NAMES, USB_VENDOR_NAMES } from './constants/usb';
 import { FACT_DISPLAY_ORDER, FACT_GROUP_CONFIG, FACT_ICONS } from './constants/deviceFacts';
+import { findChipDocs } from './constants/chipDocsLinks';
 import { PWM_TABLE } from './utils/pwm-capabilities-table';
 
 let littlefsModulePromise = null;
@@ -5325,6 +5326,15 @@ async function connect() {
       !Number.isNaN(blockVersionMinor)
     ) {
       pushFact('eFuse Block Version', `v${blockVersionMajor}.${blockVersionMinor}`);
+    }
+
+    const docs = chipName ? findChipDocs(chipName) : undefined;
+    if (docs) {
+      pushFact('Hardware Reference', docs.hwReference);
+      pushFact('Datasheet', docs.datasheet);
+      pushFact('Technical Reference Manual', docs.technicalReferenceManual);
+      pushFact('Errata', docs.errata);
+      pushFact('Hardware Design Guidelines', docs.hardwareDesignGuidelines);
     }
 
     try {

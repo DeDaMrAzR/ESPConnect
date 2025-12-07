@@ -13,6 +13,11 @@ export const FACT_ICONS: Record<string, string> = {
   'Connection Baud': 'mdi-speedometer',
   'eFuse Block Version': 'mdi-shield-key',
   'PWM/LEDC': 'mdi-waveform',
+  'Hardware Reference': 'mdi-book-open-page-variant',
+  Datasheet: 'mdi-book-open-page-variant',
+  'Technical Reference Manual': 'mdi-book-open-page-variant',
+  Errata: 'mdi-book-open-page-variant',
+  'Hardware Design Guidelines': 'mdi-book-open-page-variant',
 };
 
 export const FACT_DISPLAY_ORDER = [
@@ -27,6 +32,11 @@ export const FACT_DISPLAY_ORDER = [
   'Flash Vendor (eFuse)',
   'PSRAM Vendor (eFuse)',
   'eFuse Block Version',
+  'Hardware Reference',
+  'Datasheet',
+  'Technical Reference Manual',
+  'Errata',
+  'Hardware Design Guidelines',
   'PWM/LEDC',
   'USB Bridge',
   'Connection Baud',
@@ -55,6 +65,17 @@ export const FACT_GROUP_CONFIG = [
     title: 'Security',
     icon: 'mdi-shield-key-outline',
     labels: ['eFuse Block Version'],
+  },
+  {
+    title: 'Documentation',
+    icon: 'mdi-book-open-page-variant',
+    labels: [
+      'Hardware Reference',
+      'Datasheet',
+      'Technical Reference Manual',
+      'Errata',
+      'Hardware Design Guidelines',
+    ],
   },
   {
     title: 'Peripherals',

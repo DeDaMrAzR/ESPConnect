@@ -101,6 +101,11 @@
                           </template>
                         </VTooltip>
                       </template>
+                      <template v-else-if="isUrl(fact.value)">
+                        <a :href="fact.value" target="_blank" rel="noopener" class="detail-card__link">
+                          <v-icon size="16" class="detail-card__link-icon">mdi-open-in-new</v-icon>
+                        </a>
+                      </template>
                       <template v-else>
                         {{ fact.value }}
                       </template>
@@ -130,6 +135,9 @@ const props = defineProps({
     default: null,
   },
 });
+
+const urlPattern = /^https?:\/\//i;
+const isUrl = value => typeof value === 'string' && urlPattern.test(value);
 
 const details = computed(() => {
   const candidate = props.chipDetails;
@@ -554,6 +562,24 @@ const featurePreview = computed(() => {
   word-break: break-word;
   white-space: normal;
   line-height: 1.3;
+}
+
+.detail-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: flex-end;
+  color: inherit;
+  text-decoration: none;
+  word-break: break-all;
+}
+
+.detail-card__link:hover {
+  text-decoration: underline;
+}
+
+.detail-card__link-icon {
+  opacity: 0.75;
 }
 
 .detail-card__value-with-icon {
