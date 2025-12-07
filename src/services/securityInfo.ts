@@ -163,47 +163,102 @@ export function decodeSecurityInfo(info: SecurityInfo): DecodedSecurityInfo {
 /**
  * Generate a human-readable multi-line summary string.
  */
-export function formatSecuritySummary(
+// Keep your existing types & helpers:
+// - SecurityInfo
+// - decodeSecurityInfo(info)
+// - DecodedSecurityFlags, etc.
+
+export interface SecurityFact {
+  label: string;
+  value: string;
+  /**
+   * Optional hint you can use in the UI
+   * (e.g. icon, color, grouping).
+   */
+  kind?: "status" | "detail" | "note";
+}
+
+/**
+ * Build a reusable list of labeled security facts.
+ * This is what you'll feed into pushFact().
+ */
+export function buildSecurityFacts(
   info: SecurityInfo,
   chipName?: string
-): string {
+): SecurityFact[] {
   const decoded = decodeSecurityInfo(info);
   const f = decoded.flags;
 
-  const lines: string[] = [];
+  const facts: SecurityFact[] = [];
 
-  // CHIP
-//   lines.push(`Chip: ${chipName ?? "Unknown"} (ID=0x${info.chipId.toString(16)}, API v${info.apiVersion})`);
+  // If you decide later to surface this, just uncomment:
+  // facts.push({
+  //   label: "Chip ID",
+  //   value: `0x${info.chipId.toString(16)} (API v${info.apiVersion})`,
+  //   kind: "detail",
+  // });
 
-  // FLASH ENCRYPTION
-  lines.push(
-    `Flash Encryption: ${
-      decoded.flashEncryptionEnabled ? "ENABLED" : "disabled"
-    }  (FLASH_CRYPT_CNT=0x${info.flashCryptCnt.toString(
+//   if (chipName) {
+//     facts.push({
+//       label: "Chip Variant",
+//       value: chipName,
+//       kind: "detail",
+//     });
+//   }
+
+  // FLASH ENCRYPTION (status)
+  facts.push({
+    label: "Flash Encryption",
+    value: decoded.flashEncryptionEnabled ? "ENABLED" : "disabled",
+    kind: "status",
+  });
+
+  // FLASH ENCRYPTION DETAILS (kept compact so you can show it or not)
+  facts.push({
+    label: "Flash Encryption Details",
+    value: `FLASH_CRYPT_CNT=0x${info.flashCryptCnt.toString(
       16,
-    )}, set bits=${decoded.flashCryptCntSetBits})`
-  );
+    )} (set bits=${decoded.flashCryptCntSetBits})`,
+    kind: "detail",
+  });
 
   // CHIP-SPECIFIC NOTES ABOUT FLASH ENCRYPTION
   if (chipName?.startsWith("ESP32-S3") || chipName?.startsWith("ESP32-C3")) {
-    lines.push("  • Using XTS_AES encryption mode (supported on this chip)");
+    facts.push({
+      label: "Flash Encryption Mode",
+      value: "XTS AES (supported on this chip)",
+      kind: "note",
+    });
   } else if (chipName?.startsWith("ESP32")) {
-    lines.push("  • Using AES-128 flash encryption (original ESP32 scheme)");
+    facts.push({
+      label: "Flash Encryption Mode",
+      value: "AES-128 (original ESP32 scheme)",
+      kind: "note",
+    });
   }
 
   // SECURE BOOT
-  lines.push(
-    `Secure Boot: ${f.secureBootEnabled ? "ENABLED" : "disabled"}${
-      f.secureBootAggressiveRevoke ? " (aggressive revoke)" : ""
-    }`
-  );
+  const sbStatus = f.secureBootEnabled ? "ENABLED" : "disabled";
+  const sbExtra = f.secureBootAggressiveRevoke ? " (aggressive revoke)" : "";
+  facts.push({
+    label: "Secure Boot",
+    value: sbStatus + sbExtra,
+    kind: "status",
+  });
 
   // CHIP-SPECIFIC SECURE BOOT NOTES
   if (chipName?.startsWith("ESP32-S3") || chipName?.startsWith("ESP32-C3")) {
-    lines.push("  • Secure Boot v2 supported (digest-based, supports revocation)");
-  }
-  if (chipName?.startsWith("ESP32") && !chipName.includes("S")) {
-    lines.push("  • Secure Boot v1 (RSA) used on original ESP32");
+    facts.push({
+      label: "Secure Boot Type",
+      value: "v2 (digest-based, supports revocation)",
+      kind: "note",
+    });
+  } else if (chipName?.startsWith("ESP32") && !chipName.includes("S")) {
+    facts.push({
+      label: "Secure Boot Type",
+      value: "v1 (RSA, original ESP32)",
+      kind: "note",
+    });
   }
 
   // JTAG PROTECTION
@@ -212,37 +267,61 @@ export function formatSecuritySummary(
     : f.softJtagDisabled
     ? "SOFT disabled"
     : "enabled";
-  lines.push(`JTAG protection: ${jtagStatus}`);
+
+  facts.push({
+    label: "JTAG Protection",
+    value: jtagStatus,
+    kind: "status",
+  });
 
   // USB PROTECTION — Only applies if chip has USB
   if (chipName?.includes("S2") || chipName?.includes("S3") || chipName?.includes("H2")) {
-    lines.push(`USB protection: ${f.usbDisabled ? "disabled" : "enabled"}`);
+    facts.push({
+      label: "USB Protection",
+      value: f.usbDisabled ? "disabled" : "enabled",
+      kind: "status",
+    });
   } else {
-    lines.push("USB protection: not applicable for this chip");
+    facts.push({
+      label: "USB Protection",
+      value: "not applicable for this chip",
+      kind: "detail",
+    });
   }
 
   // CACHE PROTECTION
   if (f.downloadDCacheDisabled || f.downloadICacheDisabled) {
-    lines.push(`Download-mode caches disabled: ${
-      [
-        f.downloadDCacheDisabled ? "DCache" : "",
-        f.downloadICacheDisabled ? "ICache" : ""
-      ].filter(Boolean).join(", ")
-    }`);
+    const caches = [
+      f.downloadDCacheDisabled ? "DCache" : "",
+      f.downloadICacheDisabled ? "ICache" : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    facts.push({
+      label: "Download-Mode Caches",
+      value: `disabled: ${caches}`,
+      kind: "detail",
+    });
   }
 
-  // KEY PURPOSES
-//   lines.push("");
-//   lines.push("Key Purposes:");
-//   decoded.keyPurposes.forEach((kp) => {
-//     lines.push(`  [Key ${kp.index}] ${kp.label}`);
-//   });
+  // decoded.keyPurposes.forEach((kp) => {
+  //   facts.push({
+  //     label: `Key ${kp.index} Purpose`,
+  //     value: kp.label,
+  //     kind: "detail",
+  //   });
+  // });
 
   // CHIP-SPECIFIC EXTENDED NOTES
   if (chipName?.startsWith("ESP32-S3")) {
-    lines.push("");
-    lines.push("Note: ESP32-S3 supports XTS encryption, HMAC key slots, and flexible key purposes.");
+    facts.push({
+      label: "Security Note",
+      value: "ESP32-S3 supports XTS encryption, HMAC key slots, and flexible key purposes.",
+      kind: "note",
+    });
   }
 
-  return lines.join("\n");
+  return facts;
 }
+

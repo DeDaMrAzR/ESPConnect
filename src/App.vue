@@ -5196,7 +5196,7 @@ async function connect() {
     }
 
     connectDialog.message = 'Handshaking with ROM bootloader...';
-    const { chipName, macAddress: handshakeMac,summary:securityInfo } = await esptool.connectAndHandshake();
+    const { chipName, macAddress: handshakeMac, securityFacts } = await esptool.connectAndHandshake();
     currentBaud.value = desiredBaud || connectBaud;
     transport.value.baudrate = currentBaud.value;
     const previousSuspendState = suspendBaudWatcher;
@@ -5380,8 +5380,10 @@ async function connect() {
       pushFact('Hardware Design Guidelines', docs.hardwareDesignGuidelines);
     }
 
-    if(securityInfo) {
-          // pushFact('Security information', securityInfo);  
+    if (securityFacts) {
+      for (const fact of securityFacts) {
+        pushFact(fact.label, fact.value);
+      }
     }
 
     try {
