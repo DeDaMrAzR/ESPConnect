@@ -1,5 +1,16 @@
 import { reactive, ref } from 'vue';
 
+export type SpiffsClient = {
+  list: () => any;
+  read: (path: string) => any;
+  write: (path: string, data: any) => any;
+  remove: (path: string) => any;
+  format: () => any;
+  toImage: () => any;
+  getUsage?: () => { capacityBytes: number; usedBytes: number; freeBytes: number };
+  canFit?: (path: string, size: number) => boolean;
+};
+
 export type FatfsClient = {
   list?: () => Array<{ name?: string; size?: number; path?: string; type?: string }>;
   writeFile?: (path: string, data: any) => any;
@@ -20,7 +31,7 @@ export function useSpiffsManager() {
     busy: false,
     saving: false,
     error: null as string | null,
-    client: null as unknown,
+    client: null as SpiffsClient | null,
     readOnly: false,
     readOnlyReason: '',
     dirty: false,
