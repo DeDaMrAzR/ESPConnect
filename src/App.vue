@@ -3189,6 +3189,14 @@ type SetBaudOptions = {
   updateDropdown?: boolean;
 };
 
+type ConfirmationOptions = {
+  title?: string;
+  message?: string;
+  confirmText?: string;
+  cancelText?: string;
+  destructive?: boolean;
+};
+
 // Write a filesystem image to flash with progress callbacks.
 async function writeFilesystemImage(partition: any, image: Uint8Array | ArrayBuffer, options: WriteFilesystemOptions = {}) {
   const { onProgress, label = 'filesystem', state, compress = true } = options;
@@ -4235,8 +4243,8 @@ function applyRegisterGuide(chipKey) {
 }
 
 // Open a confirmation dialog and return the user's decision.
-function showConfirmation(options = {}) {
-  return new Promise(resolve => {
+function showConfirmation(options: ConfirmationOptions = {}) {
+  return new Promise<boolean>(resolve => {
     confirmationResolver = resolve;
     confirmationDialog.title = options.title || 'Please confirm';
     confirmationDialog.message = options.message || '';
