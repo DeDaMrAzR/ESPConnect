@@ -881,7 +881,7 @@ function markFatfsDirty(message) {
 }
 
 // Ensure LittleFS has a selected partition and is loaded when needed.
-async function ensureLittlefsReady(options = {}) {
+async function ensureLittlefsReady(options: EnsureFsOptions = {}) {
   if (!connected.value || !littleFsAvailable.value) {
     return;
   }
@@ -1476,20 +1476,20 @@ async function handleLittlefsNavigateUp() {
 }
 
 // Create a new folder in the current LittleFS path.
-async function handleLittlefsNewFolder() {
+async function handleLittlefsNewFolder(name?: string) {
   if (!littlefsState.client || littlefsState.readOnly) return;
-  const name = (arguments[0] || prompt('New folder name'))?.toString().trim();
-  if (!name) return;
-  if (name.includes('/') || name.includes('..')) {
+  const folderName = (name || prompt('New folder name'))?.toString().trim();
+  if (!folderName) return;
+  if (folderName.includes('/') || folderName.includes('..')) {
     showToast('Folder name cannot contain slashes or "..".', { color: 'warning' });
     return;
   }
-  const targetPath = joinFsPath(littlefsState.currentPath || '/', name);
+  const targetPath = joinFsPath(littlefsState.currentPath || '/', folderName);
   const existingDir =
     littlefsState.allFiles?.find(entry => entry.path === targetPath && entry.type === 'dir') ||
     littlefsState.files.find(entry => entry.path === targetPath && entry.type === 'dir');
   if (existingDir) {
-    const msg = `Folder "${name}" already exists here.`;
+    const msg = `Folder "${folderName}" already exists here.`;
     showToast(msg, { color: 'warning' });
     littlefsState.status = msg;
     return;
@@ -1689,7 +1689,7 @@ async function handleLittlefsView(path) {
 }
 
 // Ensure FATFS has a selected partition and is loaded when needed.
-async function ensureFatfsReady(options = {}) {
+async function ensureFatfsReady(options: EnsureFsOptions = {}) {
   if (!connected.value || !fatfsAvailable.value) {
     return;
   }
@@ -2525,7 +2525,7 @@ function hasSpiffsBackup() {
 }
 
 // Ensure SPIFFS has a selected partition and is loaded when needed.
-async function ensureSpiffsReady(options = {}) {
+async function ensureSpiffsReady(options: EnsureFsOptions = {}) {
   if (!connected.value || !spiffsAvailable.value) {
     return;
   }
@@ -3154,6 +3154,10 @@ type WriteFilesystemOptions = {
   label?: string;
   state?: { status?: string };
   compress?: boolean;
+};
+
+type EnsureFsOptions = {
+  force?: boolean;
 };
 
 // Write a filesystem image to flash with progress callbacks.
