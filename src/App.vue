@@ -631,7 +631,7 @@ import { InMemorySpiffsClient } from './utils/spiffs/spiffsClient';
 import { useFatfsManager, useLittlefsManager, useSpiffsManager } from './composables/useFilesystemManagers';
 import { useDialogs } from './composables/useDialogs';
 import { readPartitionTable } from './utils/partitions';
-import { createEsptoolClient, requestSerialPort, type CompatibleLoader } from './services/esptoolClient';
+import { createEsptoolClient, requestSerialPort, type CompatibleLoader, type CompatibleTransport } from './services/esptoolClient';
 import {
   SPIFFS_AUDIO_EXTENSIONS,
   SPIFFS_AUDIO_MIME_MAP,
@@ -3613,7 +3613,7 @@ const confirmationDialog = reactive({
 });
 let confirmationResolver = null;
 const currentPort = ref(null);
-const transport = ref(null);
+const transport = ref<CompatibleTransport | null>(null);
 const loader = ref<CompatibleLoader | null>(null);
 const firmwareBuffer = ref(null);
 const firmwareName = ref('');
@@ -4994,10 +4994,11 @@ async function handleSerialDisconnectEvent(event) {
 
 // Read serial data in a loop, pushing it into the monitor until aborted.
 async function monitorLoop(signal) {
-  if (!transport.value) {
+  const transportInstance = transport.value;
+  if (!transportInstance) {
     throw new Error('Serial monitor not supported by current transport.');
   }
-  const iterator = transport.value.rawRead();
+  const iterator = transportInstance.rawRead();
   for await (const chunk of iterator) {
     if (signal.aborted) break;
     if (!chunk || !chunk.length) continue;
@@ -5100,7 +5101,8 @@ async function stopMonitor(options: StopMonitorOptions = {}) {
 // Pulse RTS/DTR to reset the target board.
 async function resetBoard(options: ResetOptions = {}) {
   const { silent = false } = options;
-  if (!transport.value) {
+  const transportInstance = transport.value;
+  if (!transportInstance) {
     appendLog('Cannot reset: transport not available.', '[ESPConnect-Warn]');
     return;
   }
@@ -5108,10 +5110,10 @@ async function resetBoard(options: ResetOptions = {}) {
     if (!silent) {
       appendLog('Resetting board (toggle RTS).', '[ESPConnect-Debug]');
     }
-    await transport.value.setDTR(false);
-    await transport.value.setRTS(true);
+    await transportInstance.setDTR(false);
+    await transportInstance.setRTS(true);
     await loader.value?.sleep?.(120);
-    await transport.value.setRTS(false);
+    await transportInstance.setRTS(false);
   } catch (err) {
     appendLog(`Board reset failed: ${err?.message || err}`, '[error]');
   }
@@ -5232,14 +5234,15 @@ async function connect() {
         appendLog(msg, '[ESPConnect-Debug]');
       },
     });
-    transport.value = esptool.transport;
+    const transportInstance = esptool.transport;
+    transport.value = transportInstance;
     loader.value = esptool.loader;
     currentBaud.value = connectBaud_defaultROM;
-    transport.value.baudrate = connectBaud_defaultROM;
+    transportInstance.baudrate = connectBaud_defaultROM;
 
     // Flush any input remaining on the transport
     try {
-      await transport.value.flushInput();
+      await transportInstance.flushInput();
       appendLog('Serial input flushed before handshake.', '[ESPConnect-Debug]');
     } catch (err) {
       appendLog(`Warning: unable to flush serial input before handshake (${formatErrorMessage(err)}).`, '[ESPConnect-Warn]');
@@ -5249,7 +5252,7 @@ async function connect() {
     connectDialog.message = 'Handshaking with ROM bootloader...';
     const esp = await esptool.connectAndHandshake();
     currentBaud.value = desiredBaud || connectBaud_defaultROM;
-    transport.value.baudrate = currentBaud.value;
+    transportInstance.baudrate = currentBaud.value;
     const previousSuspendState = suspendBaudWatcher;
     suspendBaudWatcher = true;
     selectedBaud.value = currentBaud.value as BaudRate;

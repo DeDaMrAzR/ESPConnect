@@ -102,7 +102,7 @@ export type CompatibleLoader = ESPLoader & {
 const MD5_TIMEOUT_PER_MB = 8000;
 const sleep = (ms = 50) => new Promise(resolve => setTimeout(resolve, ms));
 
-class CompatibleTransport {
+export class CompatibleTransport {
   device: SerialPort;
   baudrate: number;
   tracing: boolean;
