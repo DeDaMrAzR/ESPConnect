@@ -3757,7 +3757,7 @@ async function setConnectionBaud(targetBaud: string | number, options: SetBaudOp
         appendLog('Changing baud to ' + parsed.toLocaleString() + ' bps...', '[ESPConnect-Debug]');
       }
       loader.value.baudrate = parsed;
-      await loader.value.changeBaud(parsed);
+      await loader.value.setBaudrate(parsed);
       if (transport.value) {
         transport.value.baudrate = parsed;
       }

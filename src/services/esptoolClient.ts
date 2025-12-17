@@ -71,14 +71,12 @@ export interface EsptoolClient {
   loader: CompatibleLoader;
   transport: CompatibleTransport;
   connectAndHandshake: () => Promise<ConnectHandshakeResult>;
-  changeBaud: (baud: number) => Promise<void>;
   readPartitionTable: (offset?: number, length?: number) => Promise<any[]>;
   readChipMetadata: () => Promise<ChipMetadata>;
 }
 
 export type CompatibleLoader = ESPLoader & {
   baudrate: number;
-  changeBaud: (baud?: number) => Promise<void>;
   readReg: (addr: number) => Promise<number>;
   writeReg: (addr: number, value: number, mask?: number, delayUs?: number) => Promise<void>;
   flashMd5sum: (addr: number, size: number) => Promise<string>;
@@ -186,14 +184,6 @@ function createLogger(terminal: any, debugLogging: boolean): Logger {
   };
 }
 
-function bstrToUi8(data: string) {
-  const view = new Uint8Array(data.length);
-  for (let i = 0; i < data.length; i += 1) {
-    view[i] = data.charCodeAt(i) & 0xff;
-  }
-  return view;
-}
-
 function md5ToHex(md5: Uint8Array) {
   return Array.from(md5.slice(0, 16))
     .map(b => b.toString(16).padStart(2, '0'))
@@ -224,13 +214,6 @@ function decorateLoader(loader: ESPLoader, setBusy: BusySetter): CompatibleLoade
   const baseReadFlash = loader.readFlash.bind(loader);
   decorated.readFlash = async (...args: Parameters<ESPLoader['readFlash']>) =>
     runBusy(() => baseReadFlash(...args));
-
-  decorated.changeBaud = async (baud?: number) =>
-    runBusy(async () => {
-      const target = baud ?? decorated.baudrate ?? DEFAULT_ROM_BAUD;
-      decorated.baudrate = target;
-      await loader.setBaudrate(target);
-    });
 
   decorated.readReg = async (addr: number) => runBusy(() => loader.readRegister(addr));
 
@@ -346,7 +329,7 @@ export function createEsptoolClient({
 
       if (desiredBaud && desiredBaud !== DEFAULT_ROM_BAUD) {
         loader.baudrate = desiredBaud;
-        await loader.changeBaud(desiredBaud);
+        await loader.setBaudrate(desiredBaud);
         transport.baudrate = desiredBaud;
       }
 
@@ -365,11 +348,6 @@ export function createEsptoolClient({
     } finally {
       setBusy(false);
     }
-  }
-
-  async function changeBaud(baud: number) {
-    await loader.changeBaud(baud);
-    transport.baudrate = loader.baudrate;
   }
 
   async function readPartitionTable(offset = 0x8000, length = 0x400) {
@@ -468,7 +446,6 @@ export function createEsptoolClient({
     loader: loaderProxy,
     transport,
     connectAndHandshake,
-    changeBaud,
     readPartitionTable,
     readChipMetadata,
   };
