@@ -439,16 +439,6 @@ export function createEsptoolClient({
   return client;
 }
 
-function safeMac(loader: CompatibleLoader) {
-  try {
-    const mac = loader.macAddr();
-    if (!Array.isArray(mac)) return undefined;
-    return mac;
-  } catch {
-    return undefined;
-  }
-}
-
 function formatMac(macArr: number[] | undefined) {
   if (!Array.isArray(macArr) || macArr.length < 6) return undefined;
   return macArr.slice(0, 6).map(byte => byte.toString(16).padStart(2, '0')).join(':');
