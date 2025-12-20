@@ -12,6 +12,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "test": "vitest run",
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
@@ -37,6 +38,7 @@
     "@vitejs/plugin-vue": "^6.0.1",
     "electron": "^33.2.0",
     "sass": "^1.80.0",
+    "vitest": "^3.2.4",
     "vite": "^7.1.12",
     "vite-plugin-vuetify": "^2.0.3"
   }

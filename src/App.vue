@@ -92,6 +92,15 @@
                 :unused-summary="unusedFlashSummary" :flash-size-label="partitionFlashSizeLabel" />
             </v-window-item>
 
+            <v-window-item value="nvs">
+              <NvsInspectorTab v-if="connected" :partitions="nvsPartitions" :selected-partition-id="nvsState.selectedId"
+                :loading="nvsState.loading" :status="nvsState.status" :error="nvsState.error" :result="nvsState.result"
+                :has-partition="hasNvsPartitionSelected" @select-partition="handleSelectNvsPartition"
+                @read-nvs="handleReadNvs" />
+              <DisconnectedState v-else icon="mdi-database-search" :min-height="420"
+                subtitle="Connect to an ESP32 with an NVS partition to inspect stored key/value pairs." />
+            </v-window-item>
+
             <v-window-item value="spiffs">
               <FilesystemManagerTab v-if="connected" :partitions="spiffsPartitions"
                 :selected-partition-id="spiffsState.selectedId" :files="spiffsState.files" :status="spiffsState.status"
@@ -622,6 +631,7 @@ import FlashFirmwareTab from './components/FlashFirmwareTab.vue';
 import AppsTab from './components/AppsTab.vue';
 import FilesystemManagerTab from './components/FilesystemManagerTab.vue';
 import LittlefsManagerTab from './components/LittlefsManagerTab.vue';
+import NvsInspectorTab from './components/NvsInspectorTab.vue';
 import AboutTab from './components/AboutTab.vue';
 import PartitionsTab from './components/PartitionsTab.vue';
 import SessionLogTab from './components/SessionLogTab.vue';
@@ -668,6 +678,7 @@ import {
 import { FACT_GROUP_CONFIG, FACT_ICONS } from './constants/deviceFacts';
 import { findChipDocs } from './constants/chipDocsLinks';
 import { PWM_TABLE } from './utils/pwm-capabilities-table';
+import { parseNvsPartition, type NvsParseResult } from './lib/nvs/nvsParser';
 
 let littlefsModulePromise = null;
 let fatfsModulePromise = null;
@@ -2522,6 +2533,14 @@ function resetFatfsState() {
   fatfsState.blockCount = 0;
 }
 
+function resetNvsState() {
+  nvsState.selectedId = null;
+  nvsState.status = 'Select an NVS partition to begin.';
+  nvsState.loading = false;
+  nvsState.error = null;
+  nvsState.result = null;
+}
+
 // Calculate FATFS usage based on current entries.
 function updateFatfsUsage(partition = fatfsSelectedPartition.value) {
   const partitionSize = partition?.size ?? fatfsState.blockSize * fatfsState.blockCount;
@@ -2730,6 +2749,55 @@ function computeLittlefsDiff() {
 // Diff baseline vs. current FATFS files.
 function computeFatfsDiff() {
   return computeFileDiff(fatfsState.baselineFiles, fatfsState.files);
+}
+
+function handleSelectNvsPartition(partitionId) {
+  nvsState.selectedId = partitionId;
+  nvsState.result = null;
+  nvsState.error = null;
+  nvsState.status = 'Ready to read NVS.';
+}
+
+async function handleReadNvs() {
+  const partition = nvsSelectedPartition.value ?? nvsPartitions.value[0];
+  if (!partition) {
+    nvsState.error = 'No NVS partition found in the partition table.';
+    nvsState.status = 'NVS read unavailable.';
+    return;
+  }
+  if (!loader.value) {
+    nvsState.error = 'Connect to a device first.';
+    nvsState.status = 'NVS read unavailable.';
+    return;
+  }
+  if (nvsState.loading) {
+    return;
+  }
+
+  nvsState.selectedId = partition.id;
+  nvsState.loading = true;
+  nvsState.error = null;
+  nvsState.result = null;
+  const baudLabel = currentBaud.value ? ` @ ${currentBaud.value.toLocaleString()} bps` : '';
+  nvsState.status = `Reading NVS @ 0x${partition.offset.toString(16).toUpperCase()}${baudLabel}...`;
+  try {
+    const image = await readFlashToBuffer(partition.offset, partition.size, {
+      label: `NVS${baudLabel}`,
+      onProgress: progress => {
+        if (progress?.label) {
+          nvsState.status = progress.label;
+        }
+      },
+    });
+    const parsed = parseNvsPartition(image);
+    nvsState.result = parsed;
+    nvsState.status = `Parsed NVS v${parsed.version} (${parsed.namespaces.length.toLocaleString()} namespaces, ${parsed.entries.length.toLocaleString()} entries).`;
+  } catch (error) {
+    nvsState.error = formatErrorMessage(error);
+    nvsState.status = 'NVS read failed.';
+  } finally {
+    nvsState.loading = false;
+  }
 }
 
 // Select a SPIFFS partition and trigger a load.
@@ -3525,6 +3593,19 @@ const {
   fatfsSaveDialog,
   fatfsRestoreDialog,
 } = useFatfsManager(FATFS_DEFAULT_BLOCK_SIZE);
+const nvsState = reactive<{
+  selectedId: number | null;
+  status: string;
+  loading: boolean;
+  error: string | null;
+  result: NvsParseResult | null;
+}>({
+  selectedId: null,
+  status: 'Select an NVS partition to begin.',
+  loading: false,
+  error: null,
+  result: null,
+});
 const registerAddress = ref('0x0');
 const registerValue = ref('');
 const registerReadResult = ref(null);
@@ -3562,6 +3643,29 @@ const appActiveSummary = ref('Active slot unknown.');
 const appMetadataLoaded = ref(false);
 const { connectDialog, toast } = useDialogs();
 let connectDialogTimer = null;
+const nvsPartitions = computed(() =>
+  partitionTable.value
+    .filter(
+      entry =>
+        entry &&
+        typeof entry.type === 'number' &&
+        typeof entry.subtype === 'number' &&
+        entry.type === 0x01 &&
+        (entry.subtype === 0x02 || entry.subtype === 0x87),
+    )
+    .map(entry => ({
+      id: entry.offset,
+      label: entry.label?.trim() || (entry.subtype === 0x87 ? 'Factory NVS' : 'NVS'),
+      offset: entry.offset,
+      size: entry.size,
+      sizeText: formatBytes(entry.size) ?? `${entry.size} bytes`,
+    })),
+);
+const nvsAvailable = computed(() => nvsPartitions.value.length > 0);
+const nvsSelectedPartition = computed(() =>
+  nvsPartitions.value.find(partition => partition.id === nvsState.selectedId) ?? null,
+);
+const hasNvsPartitionSelected = computed(() => Boolean(nvsSelectedPartition.value));
 const spiffsPartitions = computed(() =>
   partitionTable.value
     .filter(
@@ -3676,6 +3780,13 @@ const sessionLogRef = ref(null);
 const navigationItems = computed(() => [
   { title: 'Device Info', value: 'info', icon: 'mdi-information-outline', disabled: false },
   { title: 'Partitions', value: 'partitions', icon: 'mdi-table', disabled: !connected.value },
+  {
+    title: 'NVS Inspector',
+    value: 'nvs',
+    icon: 'mdi-database-search',
+    disabled:
+      !connected.value || !nvsAvailable.value || maintenanceNavigationLocked.value,
+  },
   {
     title: 'Apps',
     value: 'apps',
@@ -3926,7 +4037,15 @@ watch(
       resetSpiffsState();
       resetLittlefsState();
       resetFatfsState();
+      resetNvsState();
       return;
+    }
+    if (nvsPartitions.value.length) {
+      if (!nvsPartitions.value.some(partition => partition.id === nvsState.selectedId)) {
+        nvsState.selectedId = nvsPartitions.value[0].id;
+      }
+    } else {
+      resetNvsState();
     }
     if (spiffsPartitions.value.length) {
       if (!spiffsPartitions.value.some(partition => partition.id === spiffsState.selectedId)) {
@@ -5208,6 +5327,7 @@ async function disconnectTransport() {
     littlefsState.selectedId = null;
     resetFatfsState();
     fatfsState.selectedId = null;
+    resetNvsState();
     currentBaud.value = DEFAULT_FLASH_BAUD;
     baudChangeBusy.value = false;
     activeTab.value = 'info';
