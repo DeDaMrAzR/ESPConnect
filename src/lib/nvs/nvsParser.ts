@@ -11,9 +11,10 @@ export type NvsValueType =
   | 'i64'
   | 'string'
   | 'blob'
+  | 'float'
+  | 'double'
+  | 'bool'
   | 'any';
-
-console.warn('[NVS] parser loaded - CRC FIX BUILD 2025-12-20');
 
 export type NvsDetectResult = { version: NvsVersion | 0; reason: string };
 
@@ -92,6 +93,9 @@ const ITEM_TYPE = {
   BLOB_LEGACY: 0x41,
   BLOB_DATA: 0x42,
   BLOB_IDX: 0x48,
+  F32: 0x24,
+  F64: 0x28,
+  BOOL: 0x31,
   ANY: 0xff,
 } as const;
 
@@ -169,15 +173,6 @@ const CRC32_TABLE = (() => {
   return table;
 })();
 
-function crc32Le(init: number, data: Uint8Array, start = 0, length = data.length - start) {
-  let crc = init >>> 0;
-  const end = Math.min(data.length, start + length);
-  for (let i = start; i < end; i += 1) {
-    crc = CRC32_TABLE[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
-  }
-  return crc >>> 0;
-}
-
 const KEY_DECODER = new TextDecoder('utf-8');
 let UTF8_FATAL_DECODER: TextDecoder | null = null;
 try {
@@ -237,6 +232,12 @@ function mapTypeCodeToValueType(typeCode: number, version: NvsVersion): NvsValue
       return 'u64';
     case ITEM_TYPE.I64:
       return 'i64';
+    case ITEM_TYPE.F32:
+      return 'float';
+    case ITEM_TYPE.F64:
+      return 'double';
+    case ITEM_TYPE.BOOL:
+      return 'bool';
     case ITEM_TYPE.SZ:
       return 'string';
     case ITEM_TYPE.BLOB_LEGACY:
@@ -706,6 +707,65 @@ function parseWithVersion(data: Uint8Array, version: NvsVersion): NvsParseResult
       }
 
       const namespace = namespaceNameById.get(idx.nsIndex) ?? `namespace#${idx.nsIndex}`;
+
+      // Heuristic decode for floats/doubles stored via Preferences as blob(4/8)
+      const k = (idx.key ?? '').toLowerCase();
+      const looksF32 = k.includes('f32') || k.includes('float');
+      const looksF64 = k.includes('f64') || k.includes('double');
+
+      if (idx.dataSize === 4 && blobData.length >= 4 && looksF32) {
+        const dv = new DataView(blobData.buffer, blobData.byteOffset, blobData.byteLength);
+        const f = dv.getFloat32(0, true);
+        blobEntries.push({
+          namespace,
+          key: idx.key,
+          type: 'float',
+          valuePreview: `${f}`,
+          value: f,
+          length: idx.dataSize,
+          crcOk: allCrcOk,
+          location: {
+            pageIndex: idx.raw.pageIndex,
+            entryIndex: idx.raw.entryIndex,
+            spanCount: idx.raw.spanCount,
+            nsIndex: idx.nsIndex,
+            typeCode: idx.raw.typeCode,
+            chunkIndex: idx.raw.chunkIndex,
+            declaredDataSize: idx.dataSize,
+            itemCrcOk: idx.itemCrcOk,
+          },
+          warnings: warningsForEntry.length ? warningsForEntry : undefined,
+        });
+        continue;
+      }
+
+      if (idx.dataSize === 8 && blobData.length >= 8 && looksF64) {
+        const dv = new DataView(blobData.buffer, blobData.byteOffset, blobData.byteLength);
+        const d = dv.getFloat64(0, true);
+        blobEntries.push({
+          namespace,
+          key: idx.key,
+          type: 'double',
+          valuePreview: `${d}`,
+          value: d,
+          length: idx.dataSize,
+          crcOk: allCrcOk,
+          location: {
+            pageIndex: idx.raw.pageIndex,
+            entryIndex: idx.raw.entryIndex,
+            spanCount: idx.raw.spanCount,
+            nsIndex: idx.nsIndex,
+            typeCode: idx.raw.typeCode,
+            chunkIndex: idx.raw.chunkIndex,
+            declaredDataSize: idx.dataSize,
+            itemCrcOk: idx.itemCrcOk,
+          },
+          warnings: warningsForEntry.length ? warningsForEntry : undefined,
+        });
+        continue;
+      }
+
+      // default: normal blob entry
       const valuePreview = `blob[${idx.dataSize}] ${hexPreview(blobData)}`;
       blobEntries.push({
         namespace,
@@ -789,19 +849,66 @@ function parseWithVersion(data: Uint8Array, version: NvsVersion): NvsParseResult
 
     if (valueType === 'blob' && item.data) {
       const data = item.data;
+
+      // Use declared size when present (NVS spans can allocate more than the declared payload)
+      const declaredLen = typeof item.declaredDataSize === 'number' ? item.declaredDataSize : data.length;
+      const payload = data.subarray(0, Math.min(declaredLen, data.length));
+
+      // Heuristic decode: Arduino Preferences stores float/double as raw bytes (blobs)
+      // Gate it by key name to avoid converting random 4/8-byte blobs.
+      const k = (key ?? '').toLowerCase();
+      const looksF32 = k.includes('f32') || k.includes('float');
+      const looksF64 = k.includes('f64') || k.includes('double');
+
+      if (payload.length === 4 && looksF32) {
+        const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+        const f = dv.getFloat32(0, true);
+        entries.push({
+          namespace,
+          key,
+          type: 'float',
+          valuePreview: `${f}`,
+          value: f,
+          length: declaredLen,
+          crcOk: combineCrcOk(item.itemCrcOk, item.dataCrcOk),
+          location,
+          warnings: itemWarnings.length ? itemWarnings : undefined,
+        });
+        continue;
+      }
+
+      if (payload.length === 8 && looksF64) {
+        const dv = new DataView(payload.buffer, payload.byteOffset, payload.byteLength);
+        const d = dv.getFloat64(0, true);
+        entries.push({
+          namespace,
+          key,
+          type: 'double',
+          valuePreview: `${d}`,
+          value: d,
+          length: declaredLen,
+          crcOk: combineCrcOk(item.itemCrcOk, item.dataCrcOk),
+          location,
+          warnings: itemWarnings.length ? itemWarnings : undefined,
+        });
+        continue;
+      }
+
+      // fallback: normal blob
       entries.push({
         namespace,
         key,
         type: 'blob',
-        valuePreview: `blob[${item.declaredDataSize ?? data.length}] ${hexPreview(data)}`,
-        value: data,
-        length: item.declaredDataSize ?? data.length,
+        valuePreview: `blob[${declaredLen}] ${hexPreview(payload)}`,
+        value: payload,
+        length: declaredLen,
         crcOk: combineCrcOk(item.itemCrcOk, item.dataCrcOk),
         location,
         warnings: itemWarnings.length ? itemWarnings : undefined,
       });
       continue;
     }
+
 
     const itemBytesOffset = item.pageIndex * PAGE_SIZE + ENTRY_DATA_OFFSET + item.entryIndex * ENTRY_SIZE;
     if (itemBytesOffset + ENTRY_SIZE > data.length) {
@@ -821,6 +928,24 @@ function parseWithVersion(data: Uint8Array, version: NvsVersion): NvsParseResult
     const valueBytes = itemBytes.subarray(24, 32);
 
     const toNumberPreview = (val: number) => `${val}`;
+
+    if (valueType === 'bool') {
+      const v = valueBytes[0] !== 0;
+      entries.push({ namespace, key, type: 'bool', valuePreview: v ? 'true' : 'false', value: v ? 1 : 0, crcOk: item.itemCrcOk, location, warnings: itemWarnings.length ? itemWarnings : undefined });
+      continue;
+    }
+
+    if (valueType === 'float') {
+      const v = itemView.getFloat32(24, true);
+      entries.push({ namespace, key, type: 'float', valuePreview: `${v}`, value: v, crcOk: item.itemCrcOk, location, warnings: itemWarnings.length ? itemWarnings : undefined });
+      continue;
+    }
+
+    if (valueType === 'double') {
+      const v = itemView.getFloat64(24, true);
+      entries.push({ namespace, key, type: 'double', valuePreview: `${v}`, value: v, crcOk: item.itemCrcOk, location, warnings: itemWarnings.length ? itemWarnings : undefined });
+      continue;
+    }
 
     if (valueType === 'u8') {
       const v = valueBytes[0];
