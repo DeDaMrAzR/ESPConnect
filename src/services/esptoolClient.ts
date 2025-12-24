@@ -21,6 +21,7 @@ import {
   ESP_SPI_FLASH_MD5,
   timeoutPerMb,
 } from 'tasmota-webserial-esptool/dist/const.js';
+import { version as tasmotaEsptoolVersion } from 'tasmota-webserial-esptool/package.json';
 import { buildSecurityFacts, type SecurityFact } from "./securityInfo";
 import { pack } from 'tasmota-webserial-esptool/dist/struct.js';
 import { DEBUG_SERIAL, DEFAULT_ROM_BAUD } from '../constants/usb';
@@ -293,6 +294,7 @@ export function createEsptoolClient({
   const transport = new CompatibleTransport(port, debugSerial ?? false, loader, isBusy);
 
   const status = (msg: string) => onStatus?.(msg);
+  status(`tasmota-webserial-esptool v(${tasmotaEsptoolVersion})`);
 
   let client: EsptoolClient;
 
