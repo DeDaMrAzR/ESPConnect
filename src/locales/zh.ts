@@ -191,6 +191,35 @@
       stop: '停止',
     },
   },
+  partitions: {
+    cardTitle: '分区',
+    cardTitleWithSize: '分区 — {size}',
+    empty: {
+      title: '暂无分区数据',
+      subtitle: '连接 ESP32 以加载其分区表（ESP8266 不受支持）。',
+    },
+    alerts: {
+      unusedFlash: {
+        detected: '检测到未使用的闪存 - 大约 {amount}（{bytes} 字节）可回收。',
+        learn: '查看',
+        or: '或尝试',
+      },
+      customizePrompt: '想自定义此布局吗？',
+      customizeOr: '或打开',
+      resources: {
+        tutorial: '分区教程',
+        builder: 'ESP32 分区构建器',
+      },
+    },
+    table: {
+      label: '标签',
+      type: '类型',
+      subtype: '子类型',
+      offset: '偏移',
+      size: '大小',
+    },
+    unnamed: '未命名',
+  },
   language: {
     english: '英语',
     chinese: '中文',

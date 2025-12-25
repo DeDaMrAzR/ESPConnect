@@ -191,6 +191,35 @@
       stop: 'Stop',
     },
   },
+  partitions: {
+    cardTitle: 'Partitions',
+    cardTitleWithSize: 'Partitions — {size}',
+    empty: {
+      title: 'No partition data yet',
+      subtitle: 'Connect to an ESP32 to load its partition table (ESP8266 not supported).',
+    },
+    alerts: {
+      unusedFlash: {
+        detected: 'Unused flash detected - about {amount} ({bytes} bytes) is reclaimable.',
+        learn: 'See the',
+        or: 'or try the',
+      },
+      customizePrompt: 'Want to customize this layout?',
+      customizeOr: 'or open the',
+      resources: {
+        tutorial: 'partition tutorial',
+        builder: 'ESP32 partition builder',
+      },
+    },
+    table: {
+      label: 'Label',
+      type: 'Type',
+      subtype: 'Subtype',
+      offset: 'Offset',
+      size: 'Size',
+    },
+    unnamed: 'Unnamed',
+  },
   language: {
     english: 'English',
     chinese: '简体中文',
