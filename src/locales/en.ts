@@ -37,6 +37,16 @@
       'This browser does not support the Web Serial API. Use Chrome, Edge, or another Chromium-based browser.',
     serialMonitorClosed: 'Serial monitor closed - click Connect to re-enter maintenance mode.',
   },
+  sessionLog: {
+    title: 'Session Log',
+    actions: {
+      copy: 'Copy',
+      clear: 'Clear',
+    },
+    emptyState: 'Logs will appear here once actions begin.',
+    copySuccess: 'Session log copied to clipboard.',
+    copyError: 'Unable to copy log. Please try again.',
+  },
   serialMonitor: {
     title: 'Serial Monitor',
     status: {

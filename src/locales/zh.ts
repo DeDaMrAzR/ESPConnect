@@ -58,6 +58,16 @@
       '启动串口监视器会将开发板重置到正常固件模式，以便查看 UART 输出。停止监视器后会自动重新进入引导加载器（stub）模式以便执行维护操作（烧录、分区工具等）。',
     emptyState: '启动后，监视器输出会显示在此处。',
   },
+  sessionLog: {
+    title: '会话日志',
+    actions: {
+      copy: '复制',
+      clear: '清除',
+    },
+    emptyState: '日志会在操作开始后出现在此处。',
+    copySuccess: '会话日志已复制到剪贴板。',
+    copyError: '无法复制日志，请重试。',
+  },
   dialogs: {
     connecting: '正在连接',
     littlefsBackup: 'LittleFS 备份',
