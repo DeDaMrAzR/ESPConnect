@@ -117,6 +117,28 @@
         'ESPConnect 完全运行于浏览器，无后端、账户或遥测。固件、备份和诊断数据始终保留在本地，仅在你下载时才会移动。请始终从可信来源烧录固件。',
     },
   },
+  apps: {
+    alerts: {
+      readingMetadata: '正在读取应用程序元数据…',
+      noApplications: '未检测到应用分区。',
+    },
+    chips: {
+      active: '激活',
+      invalid: '加密/无效',
+    },
+    subtitle: '偏移 {offset} • 大小 {size}',
+    details: {
+      project: '项目',
+      version: '版本',
+      built: '构建时间',
+      core: 'IDF / Core',
+      entry: '入口地址',
+      segments: '段数',
+    },
+    descriptorMissing: '在前 64 KB 中未找到应用描述符。',
+    invalidImage: '镜像头部加密或无效。',
+    unknown: '未知',
+  },
   language: {
     english: '英语',
     chinese: '中文',

@@ -117,6 +117,28 @@
         'ESPConnect runs fully in your browser -- there is no backend, account, or telemetry. Firmware files, backups, and diagnostics stay local and only move when you download them yourself. Always flash firmware from trusted sources.',
     },
   },
+  apps: {
+    alerts: {
+      readingMetadata: 'Reading application metadata…',
+      noApplications: 'No application partitions detected.',
+    },
+    chips: {
+      active: 'Active',
+      invalid: 'Encrypted/Invalid',
+    },
+    subtitle: 'Offset {offset} ? Size {size}',
+    details: {
+      project: 'Project',
+      version: 'Version',
+      built: 'Built',
+      core: 'IDF / Core',
+      entry: 'Entry address',
+      segments: 'Segments',
+    },
+    descriptorMissing: 'Application descriptor not found in first 64 KB.',
+    invalidImage: 'Encrypted or invalid image header.',
+    unknown: 'Unknown',
+  },
   language: {
     english: 'English',
     chinese: '简体中文',
